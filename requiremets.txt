@@ -1,0 +1,4 @@
+nltk==3.7
+pyenchant==3.2.2
+spellchecker==0.4
+textblob==0.17.1
