@@ -16,7 +16,7 @@
 ```python
 python  main.py -f C:\Users\user\Documents\PROJECTS\orfo_error\sample.txt
 ```
-**резульат работы скрипта**
+**Результат работы скрипта**
 
 ```python
 2022-03-20 16:58:35,246 [INFO] Поиск  ошибок ...
