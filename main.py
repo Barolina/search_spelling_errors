@@ -150,14 +150,14 @@ def find_error_word(text):
             if a in sim.values():
                 result.append(a)
                 continue
-            # наиболее приближенное к  нашему слову  - предполагаемое  правильное слово
+            # наиболее приближенное к  нашему слову  - предполагаемое  правильное правильное слово
             index_sim = sim[max(sim.keys())]
             # формируем  список однокоренных слов из  списка похожих слов
             stem_l = [stemmer.stem(x) for x in sim.values()]
             # пробуем определить однокоренное, то есть убираем  помехи
             procent = process.extractOne(a, stem_l)
             # граничные  рамки, если маньше  75 -  ну точно не то слово (интуитивно)
-            logging.info("Процент схожести" + str(procent[1]))
+            logging.info("Процент схожести " + str(procent[1])+ " исх.: "+a+" предп. "+index_sim)
             if procent[1] >= MAX_SIGLE and procent[1] < MIN_SIGLE:
                 result.append(a)
             else:
