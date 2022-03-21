@@ -191,6 +191,8 @@ def parser_file(path_file=None):
 
 
 if __name__ == '__main__':
+    # поиск офрограяических ошибок
+    # на вход принимает путь до файла с текстом
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", dest="file_path", type=Path)
     p = parser.parse_args()
