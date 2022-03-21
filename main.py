@@ -157,6 +157,7 @@ def find_error_word(text):
             # пробуем определить однокоренное, то есть убираем  помехи
             procent = process.extractOne(a, stem_l)
             # граничные  рамки, если маньше  75 -  ну точно не то слово (интуитивно)
+            logger.info("Процент схожести" + procent)
             if procent[1] >= MAX_SIGLE and procent[1] < MIN_SIGLE:
                 result.append(a)
             else:
