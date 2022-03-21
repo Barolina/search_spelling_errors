@@ -26,7 +26,7 @@ COST_JAR= 0.199
 MIN_SIGLE=65
 MAX_SIGLE=85
 
-#  для раздения на  предлодения, а потом на слова
+#  для раздения на  предложения, а потом на слова
 nltk.download('punkt')
 
 
@@ -51,7 +51,7 @@ def get_list_word():
 
 def jakkara(s1, s2):
     """
-    алгоритм сравнения строк на основе коэффициента Жаккара
+    Алгоритм сравнения строк на основе коэффициента Жаккара
     :param s1:
     :param s2:
     :return:
@@ -69,7 +69,7 @@ def jakkara(s1, s2):
 
 def levenshtein(seq1, seq2):
     """
-    алгоритм Левенштейна
+    Алгоритм Левенштейна
     :param seq1:
     :param seq2:
     :return:
@@ -101,7 +101,7 @@ def levenshtein(seq1, seq2):
 
 def suggest(word_s):
     """
-     Поиск похожих слов
+    Поиск похожих слов
     :param word_s: искомое млово
     :return: dict()
     """
@@ -109,14 +109,14 @@ def suggest(word_s):
     results = dict()
     # поиск похожего слова в нашем словаре
     for word in list_word:
-        if word[0] != word_s[0]: # исключаем не нужные,   начинаются на другую  букуву
+        if word[0] != word_s[0]: # исключаем ненужные,   начинаются на другую  букуву
             continue
         if word_s == word: # если искомое  слово сразу совпало с  исходным
             results[1] = word
             break
         cost = levenshtein(word, word_s) # расстояние  по Ливенштейну
         cost1 = jakkara(word, word_s) # и коеффициент
-        # если подходит под  наше условие, вероятно слвоа похожи
+        # если подходит под  наши условия, вероятно слвоа похожи
         if cost <= COST_LEVENSHTEIN and cost1 <= COST_JAR: 
             print("Lev:" + str(cost) + " " + word)
             print("Jak: " + str(cost1) + " " + word)
@@ -126,7 +126,7 @@ def suggest(word_s):
 
 def find_error_word(text):
     """
-     поиск ошибок в предоложении
+    Поиск ошибок в предоложении
     """
     text = text.lower()
     # для   хранения ошибочных слов
@@ -134,7 +134,7 @@ def find_error_word(text):
     # разбиваем на слова
     words = nltk.word_tokenize(text)
     
-    # для нахождения одноуоренных слов
+    # для нахождения однокоренных слов
     stemmer = RussianStemmer()
 
     result = list()
@@ -150,14 +150,14 @@ def find_error_word(text):
             if a in sim.values():
                 result.append(a)
                 continue
-            # наиболее приближенное к  нашему слову  - предполагаемое  правильно слово
+            # наиболее приближенное к  нашему слову  - предполагаемое  правильное слово
             index_sim = sim[max(sim.keys())]
-            # формируем  список однокореннох слов из  списка похожих слов
+            # формируем  список однокоренных слов из  списка похожих слов
             stem_l = [stemmer.stem(x) for x in sim.values()]
-            # пробуем определить однокоренное, убираем  помехи
+            # пробуем определить однокоренное, то есть убираем  помехи
             procent = process.extractOne(a, stem_l)
-            # граничне  рамки, если маньше  75 -  ну точно не то слово (интуитивно)
-            if procent[1] >= MAX_SIGLE5 or procent[1] < MIN_SIGLE:
+            # граничные  рамки, если маньше  75 -  ну точно не то слово (интуитивно)
+            if procent[1] >= MAX_SIGLE5 and procent[1] < MIN_SIGLE:
                 result.append(a)
             else:
                 # нашли ошибочное 
@@ -178,7 +178,7 @@ def parser_file(path_file=None):
         tokens = nltk.sent_tokenize(f.read())
         # по всем прделожениям
         for i in tokens:
-            # анализируем наше предлодение
+            # анализируем наше предложение
             correct_sentense, error_words = find_error_word(i)
             logging.info("Исходное  предложение: " + i)
             if error_words:
