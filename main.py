@@ -4,9 +4,10 @@ from pathlib import Path
 
 import enchant
 import nltk
+import numpy as np
 from enchant.checker import SpellChecker
+from fuzzywuzzy import process
 from nltk.stem.snowball import RussianStemmer
-from pyxdameraulevenshtein import normalized_damerau_levenshtein_distance
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,11 +23,16 @@ if 'ru_RU' not in enchant._broker.list_languages():
         "Нужно скопировать файлы  из директории  spell  в  директрию site-packages/enchant/data/mingw64/share/enchant/hunspell")
     exit()
 
+# неплохое решение поиска  ошибочных слова, ну лан
 spell_checker = SpellChecker("ru_RU")
 nltk.download('punkt')
 
 
 def get_list_word():
+    """
+    Получить словарь исходных слов
+    :return: list()
+    """
     list_word = list()
     with open("spell/ru_RU.dic", "r", encoding='utf8') as file:
         lines = file.readlines()
@@ -40,134 +46,110 @@ def get_list_word():
     return list_word
 
 
-def levenshtein(word1, word2):
-    columns = len(word1) + 1
-    rows = len(word2) + 1
+def jakkara(s1, s2):
+    """
+    алгоритм сравнения строк на основе коэффициента Жаккара
+    :param s1:
+    :param s2:
+    :return:
+    """
+    c = 0
+    s1 = set(s1)
+    s2 = set(s2)
+    a = len(s1)
+    b = len(s2)
+    for ch in s1:
+        if ch in s2:
+            c += 1
+    return 1 - c / (a + b - c)
 
-    # build first row
-    current_row = [0]
-    for column in range(1, columns):
-        current_row.append(current_row[column - 1] + 1)
 
-    for row in range(1, rows):
-        previous_row = current_row
-        current_row = [previous_row[0] + 1]
+def levenshtein(seq1, seq2):
+    """
+    алгоритм Левенштейна
+    :param seq1:
+    :param seq2:
+    :return:
+    """
+    size_x = len(seq1) + 1
+    size_y = len(seq2) + 1
+    matrix = np.zeros((size_x, size_y))
+    for x in range(size_x):
+        matrix[x, 0] = x
+    for y in range(size_y):
+        matrix[0, y] = y
 
-        for column in range(1, columns):
-
-            insert_cost = current_row[column - 1] + 1
-            delete_cost = previous_row[column] + 1
-
-            if word1[column - 1] != word2[row - 1]:
-                replace_cost = previous_row[column - 1] + 1
+    for x in range(1, size_x):
+        for y in range(1, size_y):
+            if seq1[x - 1] == seq2[y - 1]:
+                matrix[x, y] = min(
+                    matrix[x - 1, y] + 1,
+                    matrix[x - 1, y - 1],
+                    matrix[x, y - 1] + 1
+                )
             else:
-                replace_cost = previous_row[column - 1]
-
-            current_row.append(min(insert_cost, delete_cost, replace_cost))
-
-    return current_row[-1]
-
-
-def lev(a, b):
-    n, m = len(a), len(b)
-    if n > m:
-        a, b = b, a
-        n, m = m, n
-
-    current_row = range(n + 1)
-    for i in range(1, m + 1):
-        previous_row, current_row = current_row, [i] + [0] * n
-        for j in range(1, n + 1):
-            add, delete, change = previous_row[j] + 1, current_row[j - 1] + 1, previous_row[j - 1]
-            if a[j - 1] != b[i - 1]:
-                change += 1
-            current_row[j] = min(add, delete, change)
-
-    return current_row[n]
-
-
-def damerau_levenshtein_distance(s1, s2):
-    d = {}
-    lenstr1 = len(s1)
-    lenstr2 = len(s2)
-    for i in range(-1, lenstr1 + 1):
-        d[(i, -1)] = i + 1
-    for j in range(-1, lenstr2 + 1):
-        d[(-1, j)] = j + 1
-
-    for i in range(lenstr1):
-        for j in range(lenstr2):
-            if s1[i] == s2[j]:
-                cost = 0
-            else:
-                cost = 1
-            d[(i, j)] = min(
-                d[(i - 1, j)] + 1,  # deletion
-                d[(i, j - 1)] + 1,  # insertion
-                d[(i - 1, j - 1)] + cost,  # substitution
-            )
-            if i and j and s1[i] == s2[j - 1] and s1[i - 1] == s2[j]:
-                d[(i, j)] = min(d[(i, j)], d[i - 2, j - 2] + 1)  # transposition
-
-    return d[lenstr1 - 1, lenstr2 - 1]
+                matrix[x, y] = min(
+                    matrix[x - 1, y] + 1,
+                    matrix[x - 1, y - 1] + 1,
+                    matrix[x, y - 1] + 1
+                )
+    return (matrix[size_x - 1, size_y - 1])
 
 
 def suggest(word_s):
-    error = set()
+    """
+     Поиск походих слов
+    :param word_s: искомое млово
+    :return: dict()
+    """
     list_word = get_list_word()
     results = dict()
-    import numpy as np
-    array = np.array(list_word)
     for word in list_word:
         if word[0] != word_s[0]:
             continue
-        # cost = damerau_levenshtein_distance(word, word_s)
-        # cost_jar = tanimoto(word, word_s)
-        cost =  damerau_levenshtein_distance(word, word_s)
-        if cost <= 1:
-            print(str(cost) + " " + word)
+        if word_s == word:
+            results[1] = word
+            continue
+        cost = levenshtein(word, word_s)
+        cost1 = jakkara(word, word_s)
+        if cost <= 1 and cost1 <= 0.199:
+            print("Lev:" + str(cost) + " " + word)
+            print("Jak: " + str(cost1) + " " + word)
             results[cost] = word
-    # logging.info("Левенштейн " + results )
-    # result = list(zip(list_word, list(normalized_damerau_levenshtein_distance(word_s, array))))
-    # number = damerau_levenshtein_distance(word_1, word_2)
-    # print('\n' + text, sorted(result, key=lambda x: x[1]))
-
-    # command, rate = min(result, key=lambda x: x[1])
-    # if rate > 0.25:
-    #     results[rate]= command
     return results
 
 
 def find_error_word(text):
     text = text.lower()
     error_words = list()
-    words = text.replace("  ", " ").split(" ")
+    # разбиваем на слова
+    words = nltk.word_tokenize(text)
+    stemmer = RussianStemmer()
+
     result = list()
     for a in words:
-        a = a.replace(".","").replace(",","").strip()
-        sim = set()
-        if not a:
-            continue
+        a = a.replace(".", "").replace(",", "").strip()
         if len(a) <= 3:
             result.append(a)
             continue
-        stemmer = RussianStemmer()
-        # поиск однокоренного слова
-        stemmer_review = stemmer.stem(a)
+        # предплагаемые
         sim = suggest(a)
         if len(sim) >= 1:
-            index_sim = sim[min(sim.keys())]
-            # если  совпали исходные слова или  однокоренные
-            if a == index_sim:
+            if a in sim.values():
+                result.append(a)
+                continue
+            index_sim = sim[max(sim.keys())]
+            # найдем  наиболее однокоренне
+            stem_l = [stemmer.stem(x) for x in sim.values()]
+            procent = process.extractOne(a, stem_l)
+            # граничне  рамки, если маньше  75 -  ну точно не то слово
+            if procent[1] >= 85 or procent[1] < 65:
                 result.append(a)
             else:
-                result.append(index_sim)
                 error_words.append(a)
-                logging.info("Ошибочное слова " + a)
+                result.append(index_sim)
         else:
             result.append(a)
-        # print(sim)
-    # print(result)
     return " ".join(result), error_words
 
 
@@ -177,8 +159,8 @@ def parser_file(path_file=None):
         tokens = nltk.sent_tokenize(f.read())
         for i in tokens:
             correct_sentense, error_words = find_error_word(i)
+            logging.info("Исходное  предложение: " + i)
             if error_words:
-                logging.info("Исходное  предложение: " + i)
                 logging.info("Найденные ошибки: " + str(error_words))
                 logging.info("Возможно имелось ввиду: " + correct_sentense)
     except Exception as e:
