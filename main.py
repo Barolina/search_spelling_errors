@@ -9,6 +9,8 @@ from enchant.checker import SpellChecker
 from fuzzywuzzy import process
 from nltk.stem.snowball import RussianStemmer
 
+# настроим  логер
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -18,13 +20,13 @@ logging.basicConfig(
     ]
 )
 
-# if 'ru_RU' not in enchant._broker.list_languages():
-#     logging.info(
-#         "Нужно скопировать файлы  из директории  spell  в  директрию site-packages/enchant/data/mingw64/share/enchant/hunspell")
-#     exit()
+COST_LEVENSHTEIN  = 1
+COST_JAR= 0.199
 
-# неплохое решение поиска  ошибочных слова, ну лан
-# spell_checker = SpellChecker("ru_RU")
+MIN_SIGLE=65
+MAX_SIGLE=85
+
+#  для раздения на  предлодения, а потом на слова
 nltk.download('punkt')
 
 
@@ -37,6 +39,7 @@ def get_list_word():
     with open("spell/ru_RU.dic", "r", encoding='utf8') as file:
         lines = file.readlines()
         for i in lines:
+            #  убрем  лишние символы из словаря
             i = i.strip()
             index = i.find('/')
             if index == -1:
@@ -98,21 +101,23 @@ def levenshtein(seq1, seq2):
 
 def suggest(word_s):
     """
-     Поиск походих слов
+     Поиск похожих слов
     :param word_s: искомое млово
     :return: dict()
     """
     list_word = get_list_word()
     results = dict()
+    # поиск похожего слова в нашем словаре
     for word in list_word:
-        if word[0] != word_s[0]:
+        if word[0] != word_s[0]: # исключаем не нужные,   начинаются на другую  букуву
             continue
-        if word_s == word:
+        if word_s == word: # если искомое  слово сразу совпало с  исходным
             results[1] = word
-            continue
-        cost = levenshtein(word, word_s)
-        cost1 = jakkara(word, word_s)
-        if cost <= 1 and cost1 <= 0.199:
+            break
+        cost = levenshtein(word, word_s) # расстояние  по Ливенштейну
+        cost1 = jakkara(word, word_s) # и коеффициент
+        # если подходит под  наше условие, вероятно слвоа похожи
+        if cost <= COST_LEVENSHTEIN and cost1 <= COST_JAR: 
             print("Lev:" + str(cost) + " " + word)
             print("Jak: " + str(cost1) + " " + word)
             results[cost] = word
@@ -120,32 +125,42 @@ def suggest(word_s):
 
 
 def find_error_word(text):
+    """
+     поиск ошибок в предоложении
+    """
     text = text.lower()
+    # для   хранения ошибочных слов
     error_words = list()
     # разбиваем на слова
     words = nltk.word_tokenize(text)
+    
+    # для нахождения одноуоренных слов
     stemmer = RussianStemmer()
 
     result = list()
-    for a in words:
-        a = a.replace(".", "").replace(",", "").strip()
-        if len(a) <= 3:
+    # по всем словам нашего предложения
+    for a in words:        
+        if len(a) <= 3: # ну союзы и тд можно сразу  отсеить
             result.append(a)
             continue
-        # предплагаемые
+        # получить список похожих слов
         sim = suggest(a)
         if len(sim) >= 1:
+            # могло совпасть исходное и  то что в словаре
             if a in sim.values():
                 result.append(a)
                 continue
+            # наиболее приближенное к  нашему слову  - предполагаемое  правильно слово
             index_sim = sim[max(sim.keys())]
-            # найдем  наиболее однокоренне
+            # формируем  список однокореннох слов из  списка похожих слов
             stem_l = [stemmer.stem(x) for x in sim.values()]
+            # пробуем определить однокоренное, убираем  помехи
             procent = process.extractOne(a, stem_l)
-            # граничне  рамки, если маньше  75 -  ну точно не то слово
-            if procent[1] >= 85 or procent[1] < 65:
+            # граничне  рамки, если маньше  75 -  ну точно не то слово (интуитивно)
+            if procent[1] >= MAX_SIGLE5 or procent[1] < MIN_SIGLE:
                 result.append(a)
             else:
+                # нашли ошибочное 
                 error_words.append(a)
                 result.append(index_sim)
         else:
@@ -154,10 +169,16 @@ def find_error_word(text):
 
 
 def parser_file(path_file=None):
+    """
+      Функция поиска ошибок в тексте 
+    """
     f = open(path_file, 'r', encoding='utf8')
     try:
+        # разбиваем на предложения
         tokens = nltk.sent_tokenize(f.read())
+        # по всем прделожениям
         for i in tokens:
+            # анализируем наше предлодение
             correct_sentense, error_words = find_error_word(i)
             logging.info("Исходное  предложение: " + i)
             if error_words:
