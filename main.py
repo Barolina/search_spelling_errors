@@ -158,7 +158,7 @@ def find_error_word(text):
             procent = process.extractOne(a, stem_l)
             # граничные  рамки, если маньше  75 -  ну точно не то слово (интуитивно)
             logging.info("Процент схожести " + str(procent[1])+ " исх.: "+a+" предп. "+index_sim)
-            if procent[1] >= MAX_SIGLE or procent[1] < MIN_SIGLE:
+            if procent[1] >= MAX_SIGLE:
                 result.append(a)
             else:
                 # нашли ошибочное 
