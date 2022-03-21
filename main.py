@@ -18,13 +18,13 @@ logging.basicConfig(
     ]
 )
 
-if 'ru_RU' not in enchant._broker.list_languages():
-    logging.info(
-        "Нужно скопировать файлы  из директории  spell  в  директрию site-packages/enchant/data/mingw64/share/enchant/hunspell")
-    exit()
+# if 'ru_RU' not in enchant._broker.list_languages():
+#     logging.info(
+#         "Нужно скопировать файлы  из директории  spell  в  директрию site-packages/enchant/data/mingw64/share/enchant/hunspell")
+#     exit()
 
 # неплохое решение поиска  ошибочных слова, ну лан
-spell_checker = SpellChecker("ru_RU")
+# spell_checker = SpellChecker("ru_RU")
 nltk.download('punkt')
 
 
